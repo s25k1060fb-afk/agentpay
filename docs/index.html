@@ -1,0 +1,122 @@
+<!doctype html>
+<html>
+<head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta charset="utf-8">
+<title>AgentPay</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+body{width:1280px;height:720px;background:#0b0e17;color:#e8eaf0;overflow:hidden}
+header{padding:16px 28px;border-bottom:1px solid #22273a;display:flex;justify-content:space-between;align-items:center}
+header h1{font-size:22px;color:#9b7bff}
+header p{font-size:12px;color:#8a8fa3}
+.wallet{text-align:right}
+.wallet span{font-size:18px;font-weight:bold;color:#4ee6a0}
+.wallet button{margin-top:4px;background:#1b2033;border:1px solid #333a55;color:#cfd3e6;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer}
+.main{display:flex;padding:18px 28px;gap:20px}
+.col{flex:1}
+.card{background:#141829;border:1px solid #242a40;border-radius:10px;padding:14px;margin-bottom:12px}
+.card h3{font-size:15px;margin-bottom:4px}
+.card p{font-size:12px;color:#9aa0b8;margin-bottom:8px}
+.card button{background:linear-gradient(90deg,#9b7bff,#4ee6a0);border:none;color:#0b0e17;font-weight:bold;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:12px}
+.panel{background:#141829;border:1px solid #242a40;border-radius:10px;padding:14px;height:100%}
+.panel h3{font-size:15px;margin-bottom:8px;color:#9b7bff}
+#tx-log{list-style:none;font-size:12px;max-height:130px;overflow:hidden}
+#tx-log li{padding:6px 0;border-bottom:1px solid #20263a;color:#cfd3e6}
+.flow{margin-top:12px;background:#0f1423;border:1px dashed #4ee6a0;border-radius:8px;padding:10px;font-size:12px;line-height:1.6}
+.hidden{display:none}
+.linkbtn{background:none;border:none;color:#4ee6a0;font-size:11px;cursor:pointer;text-decoration:underline;margin-top:6px}
+.detail{margin-top:8px;font-size:11px;color:#9aa0b8;background:#0f1423;border-radius:6px;padding:8px}
+.settings{margin-top:10px;font-size:11px;color:#cfd3e6;background:#0f1423;border-radius:6px;padding:8px}
+footer{position:absolute;bottom:6px;left:28px;font-size:10px;color:#5a6079}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>AgentPay</h1>
+    <p>Instant micropayment rails for AI agents on Solana</p>
+  </div>
+  <div class="wallet">
+    <div>Agent Wallet: <span id="wallet-balance" data-demo="wallet-balance">48.32 USDC</span></div>
+    <button id="wallet-settings-btn" data-demo="wallet-settings-btn" onclick="toggleWalletSettings()">Spend Limits</button>
+    <div id="spend-limit-panel" data-demo="spend-limit-panel" class="settings hidden">
+      Daily limit: 5.00 USDC<br>Allowlist: SearchAgent, ImageGenAgent, DataFeedAgent
+    </div>
+  </div>
+</header>
+
+<div class="main">
+  <div class="col">
+    <div class="card">
+      <h3>🔍 Web Search Agent</h3>
+      <p>Pay-per-call search API — 0.01 USDC</p>
+      <button id="pay-search-btn" data-demo="pay-search-btn" onclick="pay('search')">Call & Pay</button>
+    </div>
+    <div class="card">
+      <h3>🎨 Image-Gen Agent</h3>
+      <p>Pay-per-call image generation — 0.05 USDC</p>
+      <button id="pay-image-btn" data-demo="pay-image-btn" onclick="pay('image')">Call & Pay</button>
+    </div>
+    <div class="card">
+      <h3>📈 Data Feed Agent</h3>
+      <p>Pay-per-call market data — 0.02 USDC</p>
+      <button id="pay-data-btn" data-demo="pay-data-btn" onclick="pay('data')">Call & Pay</button>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="panel">
+      <h3>Live Payment Dashboard</h3>
+      <ul id="tx-log" data-demo="tx-log">
+        <li>DataFeedAgent paid 0.02 USDC → Receipt #1021</li>
+        <li>ImageGenAgent paid 0.05 USDC → Receipt #1020</li>
+        <li>SearchAgent paid 0.01 USDC → Receipt #1019</li>
+      </ul>
+      <div id="flow-panel" data-demo="flow-panel" class="flow hidden">
+        <div id="flow-status" data-demo="flow-status"></div>
+        <button class="linkbtn" id="view-receipt-btn" data-demo="view-receipt-btn" onclick="toggleReceipt()">View on-chain receipt</button>
+        <div id="receipt-detail" data-demo="receipt-detail" class="detail hidden">
+          Receipt NFT | From: Agent-007 | To: Service Agent | Tx: 5f3a9c...e21c | Settled on Solana in 0.4s
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>Prototype — all data is simulated</footer>
+
+<script>
+const services = {
+  search: {name:'SearchAgent', price:0.01},
+  image: {name:'ImageGenAgent', price:0.05},
+  data: {name:'DataFeedAgent', price:0.02}
+};
+let balance = 48.32;
+let receiptNum = 1024;
+
+function pay(id){
+  const s = services[id];
+  balance -= s.price;
+  document.getElementById('wallet-balance').textContent = balance.toFixed(2)+' USDC';
+  receiptNum++;
+  const panel = document.getElementById('flow-panel');
+  panel.classList.remove('hidden');
+  document.getElementById('flow-status').innerHTML =
+    '🔒 402 Payment Required → '+s.price.toFixed(2)+' USDC<br>✅ Paid via Solana Pay (0.4s)<br>🧾 Receipt NFT #'+receiptNum+' minted';
+  const log = document.getElementById('tx-log');
+  const li = document.createElement('li');
+  li.textContent = s.name+' paid '+s.price.toFixed(2)+' USDC → Receipt #'+receiptNum;
+  log.insertBefore(li, log.firstChild);
+  document.getElementById('receipt-detail').classList.add('hidden');
+}
+
+function toggleReceipt(){
+  document.getElementById('receipt-detail').classList.toggle('hidden');
+}
+
+function toggleWalletSettings(){
+  document.getElementById('spend-limit-panel').classList.toggle('hidden');
+}
+</script>
+</body>
+</html>
